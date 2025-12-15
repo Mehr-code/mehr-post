@@ -10,11 +10,13 @@ from telegram.ext import (
 )
 from telegram.error import Conflict
 from dotenv import load_dotenv
+from aiohttp import web
 import os
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
+PORT = int(os.environ.get("PORT", 10000))
 
 # SQLite برای تاریخچه پیام‌ها
 conn = sqlite3.connect("messages.db")
@@ -31,6 +33,8 @@ conn.commit()
 
 # دیکشنری پیام‌های فعلی
 anonymous_map = {}
+
+# ------------------ Telegram Handlers ------------------
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -80,9 +84,28 @@ async def handle_owner_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
             del anonymous_map[target_user_id]
 
 
-def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+# ------------------ Dummy HTTP server برای Render ------------------
 
+
+async def handle_http(request):
+    return web.Response(text="Bot is alive!")
+
+
+def start_http_server():
+    http_app = web.Application()
+    http_app.add_routes([web.get("/", handle_http)])
+    # اجرا در background
+    loop = asyncio.get_event_loop()
+    loop.create_task(web._run_app(http_app, port=PORT))
+
+
+# ------------------ Main ------------------
+
+
+def main():
+    start_http_server()  # اجرای HTTP dummy قبل از Telegram
+
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(
         MessageHandler(filters.TEXT & (~filters.User(OWNER_ID)), handle_user_message)
@@ -94,7 +117,7 @@ def main():
     print("Bot is starting...")
 
     try:
-        # این try/except مخصوص مدیریت Conflict روی Render
+        # مدیریت Conflict روی Render
         asyncio.run(app.run_polling())
     except Conflict:
         print(
