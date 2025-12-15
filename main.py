@@ -11,6 +11,7 @@ from telegram.ext import (
 from telegram.error import Conflict
 from dotenv import load_dotenv
 from aiohttp import web
+import aiohttp
 import os
 
 load_dotenv()
@@ -99,11 +100,32 @@ def start_http_server():
     loop.create_task(web._run_app(http_app, port=PORT))
 
 
+# ------------------ پینگ الکی برای بیدار نگه داشتن سرور ------------------
+
+
+async def keep_alive():
+    url = f"http://localhost:{PORT}/"
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    if resp.status == 200:
+                        print("✅ Keep-alive ping successful")
+        except Exception as e:
+            print(f"⚠️ Keep-alive ping failed: {e}")
+        await asyncio.sleep(300)  # هر ۵ دقیقه یک بار ping
+
+
 # ------------------ Main ------------------
 
 
 def main():
+
     start_http_server()  # اجرای HTTP dummy قبل از Telegram
+
+    # اجرای keep-alive در background
+    loop = asyncio.get_event_loop()
+    loop.create_task(keep_alive())
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
