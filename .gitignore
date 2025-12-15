@@ -1,0 +1,20 @@
+# محیط مجازی
+.venv/
+venv/
+
+# فایل env حاوی توکن
+.env
+
+# فایل pycache پایتون
+__pycache__/
+*.py[cod]
+*$py.class
+
+# فایل لاگ
+*.log
+
+# فایل های temporary ادیتور
+*.swp
+*.swo
+.idea/
+.vscode/
